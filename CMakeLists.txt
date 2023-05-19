@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+set(CMAKE_TOOLCHAIN_FILE "/opt/vcpkg/scripts/buildsystems/vcpkg.cmake")
+
 cmake_minimum_required(VERSION 3.2)
 
 project(cartographer)
@@ -29,22 +31,47 @@ include("${PROJECT_SOURCE_DIR}/cmake/functions.cmake")
 google_initialize_cartographer_project()
 google_enable_testing()
 
+
+
+# ──────────────────────────────────────────────────────────────────────────── #
+# Find packages #
+
 find_package(absl REQUIRED)
+
+set(Boost_NO_WARN_NEW_VERSIONS 1) # Deactivate warning due to version conflicts of Boost and CMake
+set(Boost_USE_STATIC_LIBS ON) # only find static libs
+set(Boost_USE_DEBUG_LIBS OFF) # ignore debug libs and
+set(Boost_USE_RELEASE_LIBS ON) # only find release libs
+set(Boost_USE_MULTITHREADED ON)
+set(Boost_USE_STATIC_RUNTIME ON) # link Boost Static libraries
 set(BOOST_COMPONENTS iostreams)
 if(WIN32)
   list(APPEND BOOST_COMPONENTS zlib)
   set(Boost_USE_STATIC_LIBS FALSE)
 endif()
 find_package(Boost REQUIRED COMPONENTS ${BOOST_COMPONENTS})
-find_package(Ceres REQUIRED COMPONENTS SuiteSparse)
-find_package(Eigen3 REQUIRED)
-find_package(LuaGoogle REQUIRED)
+
+find_package(Ceres CONFIG REQUIRED COMPONENTS SuiteSparse)
+if (NOT CERES_LIBRARIES)
+  set(CERES_LIBRARIES Ceres::ceres)
+endif()
+
+find_package(Eigen3 CONFIG REQUIRED)
+if (NOT EIGEN3_LIBRARIES)
+  set(EIGEN3_LIBRARIES Eigen3::Eigen)
+endif()
+
+find_package(Lua REQUIRED)
+
 if(WIN32)
   # On Windows, Protobuf is incorrectly found by the bundled CMake module, so prefer native CMake config.
   set(protobuf_MODULE_COMPATIBLE TRUE CACHE INTERNAL "")
   find_package(Protobuf 3.0.0 CONFIG)
 else()
-  find_package(Protobuf 3.0.0 REQUIRED)
+  find_package(Protobuf 3.0.0 CONFIG REQUIRED)
+  if (NOT PROTOBUF_LIBRARY)
+    set(PROTOBUF_LIBRARY protobuf::libprotoc protobuf::libprotobuf protobuf::libprotobuf-lite)
+  endif()
 endif()
 
 if (${BUILD_GRPC})
@@ -52,13 +79,16 @@ if (${BUILD_GRPC})
 endif()
 
 if(${BUILD_PROMETHEUS})
-  find_package( ZLIB REQUIRED )
+  find_package(ZLIB REQUIRED)
+  if (NOT ZLIB_LIBRARIES)
+    set(ZLIB_LIBRARIES ZLIB::ZLIB)
+  endif()
 endif()
 
-include(FindPkgConfig)
 if (NOT WIN32)
-  PKG_SEARCH_MODULE(CAIRO REQUIRED cairo>=1.12.16)
+  find_package(Cairo REQUIRED)
 else()
+  find_package(PkgConfig REQUIRED)
   find_library(CAIRO_LIBRARIES cairo)
 endif()
 
@@ -262,13 +292,16 @@ if("${CAIRO_INCLUDE_DIRS}")
   target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC
     "${CAIRO_INCLUDE_DIRS}")
 endif()
-target_link_libraries(${PROJECT_NAME} PUBLIC ${CAIRO_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} PUBLIC
+  # ${CAIRO_LIBRARIES}
+  ${CAIRO_ABSOLUTE_LIBRARIES}
+)
 
 target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC
   ${PROTOBUF_INCLUDE_DIR})
 # TODO(hrapp): This should not explicitly list pthread and use
 # PROTOBUF_LIBRARIES, but that failed on first try.
-target_link_libraries(${PROJECT_NAME} PUBLIC ${PROTOBUF_LIBRARY} 
+target_link_libraries(${PROJECT_NAME} PUBLIC ${PROTOBUF_LIBRARY}
   absl::algorithm
   absl::base
   absl::debugging
@@ -280,7 +313,7 @@ target_link_libraries(${PROJECT_NAME} PUBLIC ${PROTOBUF_LIBRARY}
   absl::strings
   absl::synchronization
   absl::time
-  absl::utility 
+  absl::utility
 )
 if (NOT WIN32)
   target_link_libraries(${PROJECT_NAME} PUBLIC pthread)
