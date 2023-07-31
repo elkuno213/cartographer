@@ -31,10 +31,11 @@ namespace cartographer {
 namespace mapping {
 
 proto::PoseExtrapolatorOptions CreatePoseExtrapolatorOptions(
-    common::LuaParameterDictionary* const parameter_dictionary);
+  common::LuaParameterDictionary* const parameter_dictionary
+);
 
 class PoseExtrapolatorInterface {
- public:
+public:
   struct ExtrapolationResult {
     // The poses for the requested times at index 0 to N-1.
     std::vector<transform::Rigid3f> previous_poses;
@@ -45,38 +46,40 @@ class PoseExtrapolatorInterface {
   };
 
   PoseExtrapolatorInterface(const PoseExtrapolatorInterface&) = delete;
-  PoseExtrapolatorInterface& operator=(const PoseExtrapolatorInterface&) =
-      delete;
+  PoseExtrapolatorInterface& operator=(const PoseExtrapolatorInterface&)
+    = delete;
   virtual ~PoseExtrapolatorInterface() {}
 
   // TODO: Remove dependency cycle.
   static std::unique_ptr<PoseExtrapolatorInterface> CreateWithImuData(
-      const proto::PoseExtrapolatorOptions& options,
-      const std::vector<sensor::ImuData>& imu_data,
-      const std::vector<transform::TimestampedTransform>& initial_poses);
+    const proto::PoseExtrapolatorOptions& options,
+    const std::vector<sensor::ImuData>& imu_data_vector,
+    const std::vector<transform::TimestampedTransform>& initial_poses
+  );
 
   // Returns the time of the last added pose or Time::min() if no pose was added
   // yet.
-  virtual common::Time GetLastPoseTime() const = 0;
+  virtual common::Time GetLastPoseTime() const         = 0;
   virtual common::Time GetLastExtrapolatedTime() const = 0;
 
   virtual void AddPose(common::Time time, const transform::Rigid3d& pose) = 0;
-  virtual void AddImuData(const sensor::ImuData& imu_data) = 0;
+  virtual void AddImuData(const sensor::ImuData& imu_data)                = 0;
   virtual void AddOdometryData(const sensor::OdometryData& odometry_data) = 0;
-  virtual transform::Rigid3d ExtrapolatePose(common::Time time) = 0;
 
+  virtual transform::Rigid3d ExtrapolatePose(common::Time time)           = 0;
   virtual ExtrapolationResult ExtrapolatePosesWithGravity(
-      const std::vector<common::Time>& times) = 0;
+    const std::vector<common::Time>& times
+  ) = 0;
 
   // Returns the current gravity alignment estimate as a rotation from
   // the tracking frame into a gravity aligned frame.
   virtual Eigen::Quaterniond EstimateGravityOrientation(common::Time time) = 0;
 
- protected:
+protected:
   PoseExtrapolatorInterface() {}
 };
 
-}  // namespace mapping
-}  // namespace cartographer
+} // namespace mapping
+} // namespace cartographer
 
-#endif  // CARTOGRAPHER_MAPPING_POSE_EXTRAPOLATOR_INTERFACE_H_
+#endif // CARTOGRAPHER_MAPPING_POSE_EXTRAPOLATOR_INTERFACE_H_
