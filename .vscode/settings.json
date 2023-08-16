@@ -1,0 +1,9 @@
+{
+  // CMake
+  "cmake.useCMakePresets": "auto",
+  "cmake.generator": "Ninja",
+  "cmake.buildDirectory": "${workspaceFolder}/build-release",
+  "cmake.configureArgs": [
+    "-DCMAKE_CXX_STANDARD=17"
+  ]
+}

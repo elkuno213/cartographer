@@ -1,0 +1,62 @@
+// For format details, see https://aka.ms/devcontainer.json. For config options, see the
+// README at: https://github.com/devcontainers/templates/tree/main/src/docker-existing-dockerfile
+{
+  "name": "${containerWorkspaceFolder}",
+
+	"image": "huynhvuh/cartographer:ubuntu-focal",
+
+	"features": {
+		"ghcr.io/devcontainers/features/common-utils:2": {
+			"installZsh": true,
+			"configureZshAsDefaultShell": true,
+			"installOhMyZsh": true
+		},
+		"ghcr.io/devcontainers-contrib/features/zsh-plugins:0": {
+			"plugins": "git zsh-autosuggestions zsh-syntax-highlighting",
+			"omzPlugins": "https://github.com/zsh-users/zsh-autosuggestions https://github.com/zsh-users/zsh-syntax-highlighting.git",
+			"username": "nonroot"
+		}
+	},
+
+	"customizations": {
+		"vscode": {
+			"settings": {
+				// zsh
+				"terminal.integrated.defaultProfile.linux": "zsh",
+				// Git
+				"git.confirmSync": false,
+				"git.ignoreMissingGitWarning": true,
+				"git.openRepositoryInParentFolders": "never",
+				// clang-format (${workspaceFolder} does NOT work if using at settings.json in dev container)
+				"[cpp]": {
+					"editor.defaultFormatter": "xaver.clang-format"
+				},
+				"clang-format.fallbackStyle": "Google",
+				"clang-format.language.cpp.fallbackStyle": "Google",
+				"clang-format.language.cpp.style": "file",
+				"clang-format.executable": "/usr/bin/clang-format-14",
+				"clang-format.assumeFilename": "${containerWorkspaceFolder}/.clang-format",
+				// clangd
+				"C_Cpp.intelliSenseEngine": "disabled",
+				"clangd.path": "/usr/bin/clangd-14",
+				"clangd.arguments": [
+					"--compile-commands-dir=${workspaceFolder}/build-release/",
+					"--completion-style=detailed",
+					"--clang-tidy",
+					"--clang-tidy-checks=-*,modernize*",
+					"--header-insertion=never"
+				]
+			},
+			"extensions": [
+				"ms-vscode.cpptools-extension-pack",
+				"xaver.clang-format",
+				"llvm-vs-code-extensions.vscode-clangd",
+				"Gruntfuggly.todo-tree",
+				"VisualStudioExptTeam.vscodeintellicode",
+				"ms-azuretools.vscode-docker"
+			]
+		}
+	},
+
+	"containerUser": "nonroot"
+}
