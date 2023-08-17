@@ -63,41 +63,57 @@ LocalTrajectoryBuilder2D::TransformToGravityAlignedFrameAndFilter(
 }
 
 std::unique_ptr<transform::Rigid2d> LocalTrajectoryBuilder2D::ScanMatch(
-    const common::Time time, const transform::Rigid2d& pose_prediction,
-    const sensor::PointCloud& filtered_gravity_aligned_point_cloud) {
+  const common::Time time,
+  const transform::Rigid2d& pose_prediction,
+  const sensor::PointCloud& filtered_gravity_aligned_point_cloud
+) {
+  // Early return pose prediction without computation if submap is empty.
   if (active_submaps_.submaps().empty()) {
     return absl::make_unique<transform::Rigid2d>(pose_prediction);
   }
-  std::shared_ptr<const Submap2D> matching_submap =
-      active_submaps_.submaps().front();
-  // The online correlative scan matcher will refine the initial estimate for
-  // the Ceres scan matcher.
+
+  // Initialize submap as the latest one from active submaps.
+  std::shared_ptr<const Submap2D> matching_submap
+    = active_submaps_.submaps().front();
+  // Initialize ceres's initial guess as pose prediction from pose extrapolator.
   transform::Rigid2d initial_ceres_pose = pose_prediction;
 
+  // The online correlative scan matcher will refine the initial estimate for
+  // the Ceres scan matcher.
   if (options_.use_online_correlative_scan_matching()) {
     const double score = real_time_correlative_scan_matcher_.Match(
-        pose_prediction, filtered_gravity_aligned_point_cloud,
-        *matching_submap->grid(), &initial_ceres_pose);
+      pose_prediction,
+      filtered_gravity_aligned_point_cloud,
+      *matching_submap->grid(),
+      &initial_ceres_pose
+    );
     kRealTimeCorrelativeScanMatcherScoreMetric->Observe(score);
   }
 
+  // Do ceres scan matcher to get pose observation of point cloud in submap.
   auto pose_observation = absl::make_unique<transform::Rigid2d>();
   ceres::Solver::Summary summary;
-  ceres_scan_matcher_.Match(pose_prediction.translation(), initial_ceres_pose,
-                            filtered_gravity_aligned_point_cloud,
-                            *matching_submap->grid(), pose_observation.get(),
-                            &summary);
+  ceres_scan_matcher_.Match(
+    pose_prediction.translation(),
+    initial_ceres_pose,
+    filtered_gravity_aligned_point_cloud,
+    *matching_submap->grid(),
+    pose_observation.get(),
+    &summary
+  );
+
+  // If pose observation exists from ceres scan matching, add it into metric.
   if (pose_observation) {
     kCeresScanMatcherCostMetric->Observe(summary.final_cost);
-    const double residual_distance =
-        (pose_observation->translation() - pose_prediction.translation())
-            .norm();
+    const double residual_distance
+      = (pose_observation->translation() - pose_prediction.translation()).norm();
     kScanMatcherResidualDistanceMetric->Observe(residual_distance);
-    const double residual_angle =
-        std::abs(pose_observation->rotation().angle() -
-                 pose_prediction.rotation().angle());
+    const double residual_angle = std::abs(
+      pose_observation->rotation().angle() - pose_prediction.rotation().angle()
+    );
     kScanMatcherResidualAngleMetric->Observe(residual_angle);
   }
+
   return pose_observation;
 }
 
