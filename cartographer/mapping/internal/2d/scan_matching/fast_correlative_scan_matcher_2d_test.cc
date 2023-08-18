@@ -14,20 +14,20 @@
  * limitations under the License.
  */
 
-#include "cartographer/mapping/internal/2d/scan_matching/fast_correlative_scan_matcher_2d.h"
-
 #include <algorithm>
 #include <cmath>
 #include <limits>
 #include <random>
 #include <string>
 
+#include "gtest/gtest.h"
+
 #include "cartographer/common/internal/testing/lua_parameter_dictionary_test_helpers.h"
 #include "cartographer/mapping/2d/probability_grid.h"
 #include "cartographer/mapping/2d/probability_grid_range_data_inserter_2d.h"
+#include "cartographer/mapping/internal/2d/scan_matching/fast_correlative_scan_matcher_2d.h"
 #include "cartographer/transform/rigid_transform_test_helpers.h"
 #include "cartographer/transform/transform.h"
-#include "gtest/gtest.h"
 
 namespace cartographer {
 namespace mapping {
@@ -41,37 +41,47 @@ TEST(PrecomputationGridTest, CorrectValues) {
   std::uniform_int_distribution<int> distribution(0, 255);
   ValueConversionTables conversion_tables;
   ProbabilityGrid probability_grid(
-      MapLimits(0.05, Eigen::Vector2d(5., 5.), CellLimits(250, 250)),
-      &conversion_tables);
+    MapLimits(0.05, Eigen::Vector2d(5., 5.), CellLimits(250, 250)),
+    &conversion_tables
+  );
   std::vector<float> reusable_intermediate_grid;
   PrecomputationGrid2D precomputation_grid_dummy(
-      probability_grid, probability_grid.limits().cell_limits(), 1,
-      &reusable_intermediate_grid);
+    probability_grid,
+    probability_grid.limits().cell_limits(),
+    1,
+    &reusable_intermediate_grid
+  );
   for (const Eigen::Array2i& xy_index :
        XYIndexRangeIterator(Eigen::Array2i(50, 50), Eigen::Array2i(249, 249))) {
     probability_grid.SetProbability(
-        xy_index, precomputation_grid_dummy.ToScore(distribution(prng)));
+      xy_index, precomputation_grid_dummy.ToScore(distribution(prng))
+    );
   }
 
   reusable_intermediate_grid.clear();
   for (const int width : {1, 2, 3, 8}) {
     PrecomputationGrid2D precomputation_grid(
-        probability_grid, probability_grid.limits().cell_limits(), width,
-        &reusable_intermediate_grid);
+      probability_grid,
+      probability_grid.limits().cell_limits(),
+      width,
+      &reusable_intermediate_grid
+    );
     for (const Eigen::Array2i& xy_index :
          XYIndexRangeIterator(probability_grid.limits().cell_limits())) {
       float max_score = -std::numeric_limits<float>::infinity();
       for (int y = 0; y != width; ++y) {
         for (int x = 0; x != width; ++x) {
           max_score = std::max<float>(
-              max_score,
-              probability_grid.GetProbability(xy_index + Eigen::Array2i(x, y)));
+            max_score,
+            probability_grid.GetProbability(xy_index + Eigen::Array2i(x, y))
+          );
         }
       }
       EXPECT_NEAR(
-          max_score,
-          precomputation_grid.ToScore(precomputation_grid.GetValue(xy_index)),
-          1e-4);
+        max_score,
+        precomputation_grid.ToScore(precomputation_grid.GetValue(xy_index)),
+        1e-4
+      );
     }
   }
 }
@@ -81,51 +91,62 @@ TEST(PrecomputationGridTest, TinyProbabilityGrid) {
   std::uniform_int_distribution<int> distribution(0, 255);
   ValueConversionTables conversion_tables;
   ProbabilityGrid probability_grid(
-      MapLimits(0.05, Eigen::Vector2d(0.1, 0.1), CellLimits(4, 4)),
-      &conversion_tables);
+    MapLimits(0.05, Eigen::Vector2d(0.1, 0.1), CellLimits(4, 4)),
+    &conversion_tables
+  );
   std::vector<float> reusable_intermediate_grid;
   PrecomputationGrid2D precomputation_grid_dummy(
-      probability_grid, probability_grid.limits().cell_limits(), 1,
-      &reusable_intermediate_grid);
+    probability_grid,
+    probability_grid.limits().cell_limits(),
+    1,
+    &reusable_intermediate_grid
+  );
   for (const Eigen::Array2i& xy_index :
        XYIndexRangeIterator(probability_grid.limits().cell_limits())) {
     probability_grid.SetProbability(
-        xy_index, precomputation_grid_dummy.ToScore(distribution(prng)));
+      xy_index, precomputation_grid_dummy.ToScore(distribution(prng))
+    );
   }
 
   reusable_intermediate_grid.clear();
   for (const int width : {1, 2, 3, 8, 200}) {
     PrecomputationGrid2D precomputation_grid(
-        probability_grid, probability_grid.limits().cell_limits(), width,
-        &reusable_intermediate_grid);
+      probability_grid,
+      probability_grid.limits().cell_limits(),
+      width,
+      &reusable_intermediate_grid
+    );
     for (const Eigen::Array2i& xy_index :
          XYIndexRangeIterator(probability_grid.limits().cell_limits())) {
       float max_score = -std::numeric_limits<float>::infinity();
       for (int y = 0; y != width; ++y) {
         for (int x = 0; x != width; ++x) {
           max_score = std::max<float>(
-              max_score,
-              probability_grid.GetProbability(xy_index + Eigen::Array2i(x, y)));
+            max_score,
+            probability_grid.GetProbability(xy_index + Eigen::Array2i(x, y))
+          );
         }
       }
       EXPECT_NEAR(
-          max_score,
-          precomputation_grid.ToScore(precomputation_grid.GetValue(xy_index)),
-          1e-4);
+        max_score,
+        precomputation_grid.ToScore(precomputation_grid.GetValue(xy_index)),
+        1e-4
+      );
     }
   }
 }
 
 proto::FastCorrelativeScanMatcherOptions2D
-CreateFastCorrelativeScanMatcherTestOptions2D(
-    const int branch_and_bound_depth) {
-  auto parameter_dictionary =
-      common::MakeDictionary(R"text(
+CreateFastCorrelativeScanMatcherTestOptions2D(const int branch_and_bound_depth
+) {
+  auto parameter_dictionary = common::MakeDictionary(
+    R"text(
       return {
          linear_search_window = 3.,
          angular_search_window = 1.,
-         branch_and_bound_depth = )text" +
-                             std::to_string(branch_and_bound_depth) + "}");
+         branch_and_bound_depth = )text"
+    + std::to_string(branch_and_bound_depth) + "}"
+  );
   return CreateFastCorrelativeScanMatcherOptions2D(parameter_dictionary.get());
 }
 
@@ -138,16 +159,18 @@ CreateRangeDataInserterTestOptions2D() {
         miss_probability = 0.4,
       })text");
   return mapping::CreateProbabilityGridRangeDataInserterOptions2D(
-      parameter_dictionary.get());
+    parameter_dictionary.get()
+  );
 }
 
 TEST(FastCorrelativeScanMatcherTest, CorrectPose) {
   std::mt19937 prng(42);
   std::uniform_real_distribution<float> distribution(-1.f, 1.f);
   ProbabilityGridRangeDataInserter2D range_data_inserter(
-      CreateRangeDataInserterTestOptions2D());
+    CreateRangeDataInserterTestOptions2D()
+  );
   constexpr float kMinScore = 0.1f;
-  const auto options = CreateFastCorrelativeScanMatcherTestOptions2D(3);
+  const auto options        = CreateFastCorrelativeScanMatcherTestOptions2D(3);
 
   sensor::PointCloud point_cloud;
   point_cloud.push_back({Eigen::Vector3f{-2.5f, 0.5f, 0.f}});
@@ -159,35 +182,46 @@ TEST(FastCorrelativeScanMatcherTest, CorrectPose) {
 
   for (int i = 0; i != 50; ++i) {
     const transform::Rigid2f expected_pose(
-        {2. * distribution(prng), 2. * distribution(prng)},
-        0.5 * distribution(prng));
+      {2. * distribution(prng), 2. * distribution(prng)},
+      0.5 * distribution(prng)
+    );
 
     ValueConversionTables conversion_tables;
     ProbabilityGrid probability_grid(
-        MapLimits(0.05, Eigen::Vector2d(5., 5.), CellLimits(200, 200)),
-        &conversion_tables);
+      MapLimits(0.05, Eigen::Vector2d(5., 5.), CellLimits(200, 200)),
+      &conversion_tables
+    );
     range_data_inserter.Insert(
-        sensor::RangeData{
-            Eigen::Vector3f(expected_pose.translation().x(),
-                            expected_pose.translation().y(), 0.f),
-            sensor::TransformPointCloud(
-                point_cloud, transform::Embed3D(expected_pose.cast<float>())),
-            {}},
-        &probability_grid);
+      sensor::RangeData{
+        Eigen::Vector3f(
+          expected_pose.translation().x(), expected_pose.translation().y(), 0.f
+        ),
+        sensor::TransformPointCloud(
+          point_cloud, transform::Embed3D(expected_pose.cast<float>())
+        ),
+        {}},
+      &probability_grid
+    );
     probability_grid.FinishUpdate();
 
-    FastCorrelativeScanMatcher2D fast_correlative_scan_matcher(probability_grid,
-                                                               options);
+    FastCorrelativeScanMatcher2D fast_correlative_scan_matcher(
+      probability_grid, options
+    );
     transform::Rigid2d pose_estimate;
     float score;
     EXPECT_TRUE(fast_correlative_scan_matcher.Match(
-        transform::Rigid2d::Identity(), point_cloud, kMinScore, &score,
-        &pose_estimate));
+      transform::Rigid2d::Identity(),
+      point_cloud,
+      kMinScore,
+      &score,
+      &pose_estimate
+    ));
     EXPECT_LT(kMinScore, score);
-    EXPECT_THAT(expected_pose,
-                transform::IsNearly(pose_estimate.cast<float>(), 0.03f))
-        << "Actual: " << transform::ToProto(pose_estimate).DebugString()
-        << "\nExpected: " << transform::ToProto(expected_pose).DebugString();
+    EXPECT_THAT(
+      expected_pose, transform::IsNearly(pose_estimate.cast<float>(), 0.03f)
+    ) << "Actual: "
+      << transform::ToProto(pose_estimate).DebugString()
+      << "\nExpected: " << transform::ToProto(expected_pose).DebugString();
   }
 }
 
@@ -195,9 +229,10 @@ TEST(FastCorrelativeScanMatcherTest, FullSubmapMatching) {
   std::mt19937 prng(42);
   std::uniform_real_distribution<float> distribution(-1.f, 1.f);
   ProbabilityGridRangeDataInserter2D range_data_inserter(
-      CreateRangeDataInserterTestOptions2D());
+    CreateRangeDataInserterTestOptions2D()
+  );
   constexpr float kMinScore = 0.1f;
-  const auto options = CreateFastCorrelativeScanMatcherTestOptions2D(6);
+  const auto options        = CreateFastCorrelativeScanMatcherTestOptions2D(6);
 
   sensor::PointCloud unperturbed_point_cloud;
   unperturbed_point_cloud.push_back({Eigen::Vector3f{-2.5f, 0.5f, 0.f}});
@@ -209,43 +244,53 @@ TEST(FastCorrelativeScanMatcherTest, FullSubmapMatching) {
 
   for (int i = 0; i != 20; ++i) {
     const transform::Rigid2f perturbation(
-        {10. * distribution(prng), 10. * distribution(prng)},
-        1.6 * distribution(prng));
+      {10. * distribution(prng), 10. * distribution(prng)},
+      1.6 * distribution(prng)
+    );
     const sensor::PointCloud point_cloud = sensor::TransformPointCloud(
-        unperturbed_point_cloud, transform::Embed3D(perturbation));
-    const transform::Rigid2f expected_pose =
-        transform::Rigid2f({2. * distribution(prng), 2. * distribution(prng)},
-                           0.5 * distribution(prng)) *
-        perturbation.inverse();
+      unperturbed_point_cloud, transform::Embed3D(perturbation)
+    );
+    const transform::Rigid2f expected_pose
+      = transform::Rigid2f(
+          {2. * distribution(prng), 2. * distribution(prng)},
+          0.5 * distribution(prng)
+        )
+      * perturbation.inverse();
 
     ValueConversionTables conversion_tables;
     ProbabilityGrid probability_grid(
-        MapLimits(0.05, Eigen::Vector2d(5., 5.), CellLimits(200, 200)),
-        &conversion_tables);
+      MapLimits(0.05, Eigen::Vector2d(5., 5.), CellLimits(200, 200)),
+      &conversion_tables
+    );
     range_data_inserter.Insert(
-        sensor::RangeData{
-            transform::Embed3D(expected_pose * perturbation).translation(),
-            sensor::TransformPointCloud(point_cloud,
-                                        transform::Embed3D(expected_pose)),
-            {}},
-        &probability_grid);
+      sensor::RangeData{
+        transform::Embed3D(expected_pose * perturbation).translation(),
+        sensor::TransformPointCloud(
+          point_cloud, transform::Embed3D(expected_pose)
+        ),
+        {}},
+      &probability_grid
+    );
     probability_grid.FinishUpdate();
 
-    FastCorrelativeScanMatcher2D fast_correlative_scan_matcher(probability_grid,
-                                                               options);
+    FastCorrelativeScanMatcher2D fast_correlative_scan_matcher(
+      probability_grid, options
+    );
     transform::Rigid2d pose_estimate;
     float score;
     EXPECT_TRUE(fast_correlative_scan_matcher.MatchFullSubmap(
-        point_cloud, kMinScore, &score, &pose_estimate));
+      point_cloud, kMinScore, &score, &pose_estimate
+    ));
     EXPECT_LT(kMinScore, score);
-    EXPECT_THAT(expected_pose,
-                transform::IsNearly(pose_estimate.cast<float>(), 0.03f))
-        << "Actual: " << transform::ToProto(pose_estimate).DebugString()
-        << "\nExpected: " << transform::ToProto(expected_pose).DebugString();
+    EXPECT_THAT(
+      expected_pose, transform::IsNearly(pose_estimate.cast<float>(), 0.03f)
+    ) << "Actual: "
+      << transform::ToProto(pose_estimate).DebugString()
+      << "\nExpected: " << transform::ToProto(expected_pose).DebugString();
   }
 }
 
-}  // namespace
-}  // namespace scan_matching
-}  // namespace mapping
-}  // namespace cartographer
+} // namespace
+} // namespace scan_matching
+} // namespace mapping
+} // namespace cartographer
