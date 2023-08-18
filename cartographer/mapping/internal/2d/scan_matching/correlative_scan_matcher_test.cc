@@ -14,9 +14,10 @@
  * limitations under the License.
  */
 
+#include "gtest/gtest.h"
+
 #include "cartographer/mapping/internal/2d/scan_matching/correlative_scan_matcher_2d.h"
 #include "cartographer/sensor/point_cloud.h"
-#include "gtest/gtest.h"
 
 namespace cartographer {
 namespace mapping {
